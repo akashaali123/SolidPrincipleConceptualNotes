@@ -1,0 +1,101 @@
+Azure SQL Database Provisioning
+• Firewall rules
+• Encryption(Where Required)
+• Certificates
+• Authentication
+• Protect data in transit and at rest
+
+Logins and Users
+• Permissions for creating logins
+• Granting server-level permissions
+• Granting database access
+
+
+
+Ensure physical database security.
+Use web application and database firewalls.
+Minimize value of databases.
+Manage database access tightly.
+Audit and monitor database activity.
+Secure connectivity to your database using secure connection strings
+
+
+
+
+If encryption will done on all columns and all tables. The data is also Unqueryable for authorized user.
+ 
+
+13989
+
+public interface IEmployeeDataAcess   //Abstract
+{
+	Void Insert(Employee);
+}
+
+
+public class EmployeeDbAccess: IEmployeeDataAccess  //Description
+{
+
+	public void Insert(Employee)
+	{
+			//get Employee From DataBase
+	}
+
+}
+
+public class EmployeeFromFile : IEmployeeDataAccess   //Description
+{
+
+	public void Insert(Employee)
+	{
+		//get Employee from file
+	}
+}
+
+public class FacroryClass
+{
+    public static IEmployeeDataAcess GetEmployeeDataAccessObj()
+    {
+		    //Assign Object Either of File type object or db type object
+            return new EmployeeDataAccess();
+    }
+}
+
+
+public class EmployeeBussiness
+{
+	private readonly IEmployeeDataAcess employee;
+	public EmployeeBussiness()
+	{
+		employee = FacroryClass.GetEmployeeDataAccessObj();//If we assign db type class object it provide db type implementation
+														   //If we assign file type  class object it provide file type implementation
+	}
+    private void InsertEmployee(Employee employee)
+	{
+		employee.Insert(employee);
+	}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

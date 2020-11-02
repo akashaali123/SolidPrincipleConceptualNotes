@@ -1,0 +1,205 @@
+using System;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
+using JsonMasking;
+
+namespace CityNTown_API.Core.Infrastructure
+{
+    public class CommonMiddleware
+    {
+        private readonly RequestDelegate _next;
+        private readonly MaskingLogs _config;
+        private readonly ILogger<CommonMiddleware> _logger;
+
+        public CommonMiddleware(RequestDelegate next, IOptions<MaskingLogs> config, ILogger<CommonMiddleware> logger)
+        {
+            _next = next;
+            _config = config.Value;
+            _logger = logger;
+        }
+
+        public async Task Invoke(HttpContext context)
+        {
+            try
+            {
+                var logger = context.RequestServices.GetRequiredService<ILogger<CommonMiddleware>>();
+
+                var url = context.Request.Path.Value;
+
+                //First, get the incoming request
+                var request = await FormatRequest(context.Request);
+
+                //Mask confidential data in request body.
+                var maskedRequest = MaskObjectInRequest(url, request);
+
+                //Create whole request body as a string.
+                var logRequestString = $"{context.Request.Scheme} {context.Request.Host} {context.Request.Path} {context.Request.QueryString} {maskedRequest}";
+
+                if (logger.IsEnabled(LogLevel.Debug))
+                {
+                    //Log request to DB.
+                    logger.LogDebug(logRequestString);
+                }
+
+                //Copy a pointer to the original response body stream
+                var originalBodyStream = context.Response.Body;
+
+
+                //Create a new memory stream...
+                using (var responseBody = new MemoryStream())
+                {
+                    //...and use that for the temporary response body
+                    context.Response.Body = responseBody;
+
+                    //Continue down the Middleware pipeline, eventually returning to this class
+                    await _next(context);
+
+                    //Format the response from the server
+                    var response = await FormatResponse(context.Response);
+
+                    //Mask confidential data in response body.
+                    var maskedResponse = MaskObjectInResponse(url, response);
+
+                    //Create whole response body as a string.
+                    var logResponseBody = $"{context.Response.StatusCode}: {maskedResponse}";
+
+                    if (logger.IsEnabled(LogLevel.Debug))
+                    {
+                        //Log response to DB.
+                        logger.LogDebug(logResponseBody);
+                    }
+
+                    //Get response body bytes.
+                    var responseBytes = AddObjectInResponse(context, response);
+                    if(responseBytes != null)
+                    {
+                        using (var stream = new MemoryStream(responseBytes))
+                        {
+                            //Copy the contents of the new memory stream (which contains the response) to the original stream, which is then returned to the client.
+                            await stream.CopyToAsync(originalBodyStream);
+                        }
+                    }
+                    else
+                    {
+                        //Copy the contents of the new memory stream (which contains the response) to the original stream, which is then returned to the client.
+                        await responseBody.CopyToAsync(originalBodyStream);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error : {message}, Stack Trace :  {stackTrace}", ex.Message, ex.StackTrace);
+            }
+        }
+
+        private async Task<string> FormatRequest(HttpRequest request)
+        {
+            try
+            {
+                request.EnableBuffering();
+
+                var buffer = new byte[Convert.ToInt32(request.ContentLength)];
+
+                await request.Body.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false);
+
+                var bodyAsText = Encoding.UTF8.GetString(buffer);
+
+                request.Body.Position = 0;
+
+                return bodyAsText;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error : {message}, Stack Trace :  {stackTrace}", ex.Message, ex.StackTrace);
+            }
+            return null;
+        }
+
+        private async Task<string> FormatResponse(HttpResponse response)
+        {
+            try
+            {
+                //We need to read the response stream from the beginning...
+                response.Body.Seek(0, SeekOrigin.Begin);
+
+                //...and copy it into a string
+                string text = await new StreamReader(response.Body).ReadToEndAsync();
+
+                //We need to reset the reader for the response so that the client can read it.
+                response.Body.Seek(0, SeekOrigin.Begin);
+
+                //Return the string for the response, including the status code (e.g. 200, 404, 401, etc.)
+                return text;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error : {message}, Stack Trace :  {stackTrace}", ex.Message, ex.StackTrace);
+            }
+            return null;
+        }
+
+        private byte[] AddObjectInResponse(HttpContext context, string text)
+        {
+            try
+            {
+                dynamic obj = JsonConvert.DeserializeObject(text);
+                if(obj != null)
+                {
+                    obj.requestId = context.TraceIdentifier;
+                    text = JsonConvert.SerializeObject(obj);
+
+                    byte[] byteArray = Encoding.UTF8.GetBytes(text);
+
+                    return byteArray;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error : {message}, Stack Trace :  {stackTrace}", ex.Message, ex.StackTrace);
+            }
+            return null;
+        }
+
+        private string MaskObjectInRequest(string url, string requestBodyText)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(requestBodyText))
+                {
+                    if (_config.Routes.Contains(url))
+                    {
+                        requestBodyText = requestBodyText.MaskFields(_config.Keys.ToArray(), _config.MaskValue);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error : {message}, Stack Trace :  {stackTrace}", ex.Message, ex.StackTrace);
+            }
+            return requestBodyText;
+        }
+
+        private string MaskObjectInResponse(string url, string responseBodyText)
+        {
+            try
+            {
+                if (_config.Routes.Contains(url))
+                {
+                    responseBodyText = responseBodyText.MaskFields(_config.Keys.ToArray(), _config.MaskValue);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Error : {message}, Stack Trace :  {stackTrace}", ex.Message, ex.StackTrace);
+            }
+            return responseBodyText;
+        }
+
+    }
+}

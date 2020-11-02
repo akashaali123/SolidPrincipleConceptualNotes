@@ -1,0 +1,104 @@
+
+Process Vs Thread
+-----------------
+
+Process is execution of action
+process can contain multiple threads
+
+-thread is a excution  of smallest sequence of programmed instruction that can be managed independently  by a schedular
+-commonly thread run in a process 
+-threads under same process shared memeory
+-Every process has its own memory
+***************************************************************************************************************************
+
+Optimistic vs. Pessimistic Locking
+----------------------------------
+
+Concurrency control prevent two users from trying to update same data at the same time 
+
+Pessimistic concurrency model involves locking rows to prevent other user from modifying the same data at the same time.until the lock is released 
+by the lock owner,no other user will be able to access that data.Pessimistic locking can very easily lead to performance bottle necks in an application.
+it is bad approach because if user not release the lock the performance goes in vain.
+
+Optimistic concurrency does not involve locking rows while reading. Instead, this model check if two users tried to update the same record at the same time.
+If that happens one user's change are committed and the other user's changes are discarded and an exception will be thrown to notify the user
+******************************************************************************************************************************
+TempData remove after accessing
+TempData.keep method reatin value after accessing
+******************************************************************************************************************************
+
+Static data is equivalent to global data.  Everybody in the program sees the same data.  
+If someone changes the data then everybody else will see the change as well. 
+
+*******************************************************************************************************************************
+
+.Net Architecture
+-----------------
+
+MSIL or CIL
+-----------
+
+
+Intermediate lanuage independent to plat form
+
+JIT Compiler
+------------
+
+The intermediate code is converted into machine language only when the application needs that is required codes are only converted to machine code.
+
+
+CLR:
+---
+
+
+The Common Language Runtime (CLR), the virtual machine component of Microsoft . NET framework, manages the execution of . NET programs. 
+Just-in-time compilation converts the managed code (compiled intermediate language code), into machine instructions which are then executed on the CPU 
+of the computer.
+You can say that JIT is CLR in .net. 
+*********************************************************************************************************************************
+
+Output Cache
+------------
+
+Output caching is the most effective way to increase page performance. The output cache stores the full source code of pages, 
+i.e. the HTML and client script that the server sends to browsers for rendering. When a visitor views a page, 
+the server caches the output code in the application's memory
+
+**********************************************************************************************************************************
+Managed Code:
+-------------
+
+managed code is just that: code whose execution is managed by a runtime. In this case, the runtime in question is called the Common Language Runtime or CLR
+
+***************************************************************************************************************************************
+TightLy Couple to lossly couple:
+--------------------------------
+
+tightly couple class -->Implement IOC Using factory -->Implement DIP Using Abstraction --> Implement DI --> Use IOC container --> Lossely couple class
+
+Inversion of control (IOC):
+---------------------------
+
+control refers to any additional responsibilities a class has, other than its main responsibility, such as control over the flow of an application,
+or control over the dependent object creation and binding (Remember SRP - Single Responsibility Principle).
+
+For example:
+instead of driving the car yourself, you hire a cab, where another person will drive the car. Thus, this is called inversion of the control - 
+from you to the cab driver. You don't have to drive a car yourself and you can let the driver do the driving so that you can focus on your main work.
+
+
+Dependency Inversion Principle(DIP):
+------------------------------------
+
+High-level modules should not depend on low-level modules. Both should depend on the abstraction.
+Abstraction should not depend on details. Details depend on Abstraction 
+
+
+
+
+
+
+
+
+
+

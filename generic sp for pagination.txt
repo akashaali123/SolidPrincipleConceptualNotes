@@ -1,0 +1,71 @@
+CREATE PROCEDURE getSelectedPage
+    @TableOrView nvarchar (50),             
+    @SelectedPage int,
+    @PageSize int,
+    @Columns nvarchar(500),
+    @OrderByColumn nvarchar(100),
+    @OrderByDirection nvarchar(4),
+    @WhereClause nvarchar(500)
+AS
+SET NOCOUNT ON
+DECLARE @ReturnedRecords int, @SqlQuery nvarchar(1000), @ConOrderByDirection nvarchar(4), @TotalPages int, @TotalRecords int
+ 
+
+-- Finds total records
+SET @SqlQuery = N'SELECT @RecCount = COUNT(*) FROM ' + @TableOrView
+
+print @SqlQuery
+
+EXEC sp_executesql @SqlQuery, N'@RecCount int OUTPUT', @RecCount = @TotalRecords OUTPUT
+ 
+-- Checks order direction
+IF Upper(@OrderByDirection) = 'ASC'
+  BEGIN
+    SET @ConOrderByDirection = 'DESC'
+  END
+ELSE
+  BEGIN
+    SET @ConOrderByDirection = 'ASC'
+  END
+
+-- checks if WHERE clause is needed
+IF @WhereClause <> ''
+  BEGIN
+    SET @WhereClause = ' WHERE ' + @WhereClause
+  END
+
+-- Finds number of pages
+SET @ReturnedRecords = (@PageSize * @SelectedPage)
+SET @TotalPages = @TotalRecords / @PageSize
+IF @TotalRecords % @PageSize > 0
+  BEGIN
+    SET @TotalPages = @TotalPages + 1
+  END
+ 
+-- Checks if current page is last page
+IF @SelectedPage = @TotalPages
+  BEGIN
+    -- Current page is last page
+    SET @SqlQuery = N'SELECT * FROM
+    (SELECT TOP ' + CAST((@TotalRecords % @PageSize) as varchar(10)) + ' *  FROM
+      (SELECT TOP ' + CAST(@ReturnedRecords as varchar(10)) + ' ' + @Columns +
+        ' FROM ' + @TableOrView + @WhereClause + '
+        ORDER BY ' + @OrderByColumn + ' ' + @OrderByDirection + ') AS T1
+      ORDER BY ' + @OrderByColumn + ' ' + @ConOrderByDirection + ') AS T2
+    ORDER BY ' + @OrderByColumn + ' ' + @OrderByDirection
+  END
+ELSE
+  BEGIN
+    -- Current page is not last page
+    SET @SqlQuery = N'SELECT * FROM
+    (SELECT TOP ' + CAST(@PageSize as varchar(10)) + ' *  FROM
+      (SELECT TOP ' + CAST(@ReturnedRecords as varchar(10)) + ' ' + @Columns +
+        ' FROM ' + @TableOrView + @WhereClause + '
+        ORDER BY ' + @OrderByColumn + ' ' + @OrderByDirection + ') AS T1
+      ORDER BY ' + @OrderByColumn + ' ' + @ConOrderByDirection + ') AS T2
+    ORDER BY ' + @OrderByColumn + ' ' + @OrderByDirection    
+  END
+ 
+-- executes query to get selected page
+EXEC(@SqlQuery)
+SET NOCOUNT OFF

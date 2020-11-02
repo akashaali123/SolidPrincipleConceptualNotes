@@ -1,0 +1,7 @@
+We create two action filter to prevent attacks like brute force or DOS.
+1) User is not authenticated and try to login with different set of credentials.
+   If any person hit login api more than 10 time in one minute.We blocked his Ip Address for 5 minute.
+2) User is authenticated but try to hit any API more than 10 times in one minute we blocked his account 
+   temporary. if he want to his account valid again he must contact to administrator.
+
+we count per end point request for blocking
